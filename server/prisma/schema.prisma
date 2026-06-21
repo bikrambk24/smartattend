@@ -1,13 +1,129 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  student
+  teacher
+  admin
+}
+
+enum EventType {
+  checkin
+  checkout
+}
+
+enum VerificationOutcome {
+  verified
+  partial
+  unverified
+}
+
+enum GeofenceResult {
+  inside
+  outside
+  uncertain
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  deviceId     String?
+  studentId    String?
+  isDisabled   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  taughtClasses   Class[]            @relation("TeacherClasses")
+  enrollments     Enrollment[]
+  attendanceEvents AttendanceEvent[]
+}
+
+model Class {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  teacherId   String
+  teacher     User     @relation("TeacherClasses", fields: [teacherId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  enrollments Enrollment[]
+  schedules   Schedule[]
+}
+
+model Enrollment {
+  id        String   @id @default(uuid())
+  studentId String
+  classId   String
+  student   User     @relation(fields: [studentId], references: [id])
+  class     Class    @relation(fields: [classId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, classId])
+}
+
+model Schedule {
+  id                    String   @id @default(uuid())
+  classId               String
+  class                 Class    @relation(fields: [classId], references: [id])
+  dayOfWeek             Int
+  startTime             String
+  endTime               String
+  roomName              String
+  expectedFingerprint   Json?
+  anchorBssid           String?
+  anchorRssi            Int?
+  geofenceLat           Float?
+  geofenceLng           Float?
+  geofenceRadiusMetres  Int      @default(50)
+  sessionOpen           Boolean  @default(false)
+  verificationConfig    String   @default("C2")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  attendanceEvents AttendanceEvent[]
+}
+
+model AttendanceEvent {
+  id                  String               @id @default(uuid())
+  studentId           String
+  student             User                 @relation(fields: [studentId], references: [id])
+  scheduleId          String
+  schedule            Schedule             @relation(fields: [scheduleId], references: [id])
+  eventType           EventType
+  timestamp           DateTime             @default(now())
+
+  wifiScanResult       Json?
+  jaccardScore         Float?
+  anchorMatch          Boolean?
+  anchorRssi           Int?
+
+  gpsLat               Float?
+  gpsLng               Float?
+  gpsAccuracyMetres    Float?
+  geofenceResult       GeofenceResult?
+
+  deviceId             String?
+  deviceBound          Boolean?
+  mockLocationDetected Boolean              @default(false)
+
+  verificationConfig   String
+  verificationOutcome  VerificationOutcome
+
+  flagged              Boolean              @default(false)
+  flagReasons          Json?
+
+  teacherReviewed      Boolean              @default(false)
+  teacherDecision       String?
+
+  createdAt            DateTime             @default(now())
 }
