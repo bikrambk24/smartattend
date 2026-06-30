@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/authenticate';
 import { authorise } from '../middleware/authorise';
 import { asyncHandler } from '../utils/asyncHandler';
+import fingerprintRoutes from './fingerprint.routes';
 import {
   createSchedule,
   listSchedules,
@@ -19,5 +20,6 @@ router.get('/', asyncHandler(listSchedules));
 router.get('/:id', asyncHandler(getSchedule));
 router.patch('/:id', asyncHandler(updateSchedule));
 router.delete('/:id', asyncHandler(deleteSchedule));
+router.use('/:id/fingerprint', fingerprintRoutes);
 
 export default router;
