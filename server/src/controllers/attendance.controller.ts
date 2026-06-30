@@ -157,3 +157,25 @@ export async function checkOut(req: Request, res: Response) {
 
   return sendSuccess(res, event, 201);
 }
+
+export async function getMySchedules(req: Request, res: Response) {
+  const studentId = req.user!.userId;
+
+  const enrollments = await prisma.enrollment.findMany({
+    where: { studentId },
+    include: {
+      class: {
+        include: { schedules: true },
+      },
+    },
+  });
+
+  const schedules = enrollments.flatMap((e) =>
+    e.class.schedules.map((s) => ({
+      ...s,
+      className: e.class.name,
+    })),
+  );
+
+  return sendSuccess(res, schedules);
+}
