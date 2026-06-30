@@ -111,6 +111,7 @@ model AttendanceEvent {
   gpsLng               Float?
   gpsAccuracyMetres    Float?
   geofenceResult       GeofenceResult?
+  gpsDistanceMetres     Float?
 
   deviceId             String?
   deviceBound          Boolean?
