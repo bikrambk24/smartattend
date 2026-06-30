@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon --exec ts-node src/server.ts",
-    "test": "jest"
-  },
+  "dev": "nodemon --exec ts-node src/server.ts",
+  "test:seed": "dotenv -e .env.test -- npx prisma db seed",
+  "test": "jest --runInBand"
+},
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
   },

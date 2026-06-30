@@ -7,13 +7,29 @@ const prisma = new PrismaClient();
 let adminToken: string;
 let teacherId: string;
 let studentId: string;
+const createdClassIds: string[] = [];
 
 beforeAll(async () => {
-  await prisma.attendanceEvent.deleteMany();
-  await prisma.schedule.deleteMany();
-  await prisma.enrollment.deleteMany();
-  await prisma.class.deleteMany();
-  await prisma.user.deleteMany();
+  // Scoped cleanup: remove only this suite's fixtures from a previous run,
+  // identified by the test-* email prefix, rather than wiping shared tables.
+  const previousTestUsers = await prisma.user.findMany({
+    where: { email: { startsWith: 'test-' } },
+    select: { id: true },
+  });
+  const previousTestUserIds = previousTestUsers.map((u) => u.id);
+
+  if (previousTestUserIds.length > 0) {
+    await prisma.attendanceEvent.deleteMany({ where: { studentId: { in: previousTestUserIds } } });
+    const previousTestClasses = await prisma.class.findMany({
+      where: { teacherId: { in: previousTestUserIds } },
+      select: { id: true },
+    });
+    const previousTestClassIds = previousTestClasses.map((c) => c.id);
+    await prisma.schedule.deleteMany({ where: { classId: { in: previousTestClassIds } } });
+    await prisma.enrollment.deleteMany({ where: { studentId: { in: previousTestUserIds } } });
+    await prisma.class.deleteMany({ where: { id: { in: previousTestClassIds } } });
+    await prisma.user.deleteMany({ where: { id: { in: previousTestUserIds } } });
+  }
 
   const admin = await prisma.user.create({
     data: {
@@ -54,12 +70,15 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-  await prisma.schedule.deleteMany();
-  await prisma.class.deleteMany();
+  if (createdClassIds.length > 0) {
+    await prisma.schedule.deleteMany({ where: { classId: { in: createdClassIds } } });
+    await prisma.class.deleteMany({ where: { id: { in: createdClassIds } } });
+    createdClassIds.length = 0;
+  }
 });
 
 afterAll(async () => {
-  await prisma.user.deleteMany();
+  await prisma.user.deleteMany({ where: { email: { startsWith: 'test-' } } });
   await prisma.$disconnect();
 });
 
@@ -74,6 +93,7 @@ describe('POST /api/classes', () => {
     expect(response.status).toBe(201);
     expect(response.body.success).toBe(true);
     expect(response.body.data.name).toBe('Software Engineering');
+    createdClassIds.push(response.body.data.id);
   });
 
   it('rejects when teacherId belongs to a student, not a teacher', async () => {
@@ -119,6 +139,7 @@ describe('DELETE /api/classes/:id', () => {
     const created = await prisma.class.create({
       data: { name: 'Protected Class', teacherId },
     });
+    createdClassIds.push(created.id);
 
     await prisma.schedule.create({
       data: {
