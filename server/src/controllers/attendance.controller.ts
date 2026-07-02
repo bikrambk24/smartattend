@@ -179,3 +179,15 @@ export async function getMySchedules(req: Request, res: Response) {
 
   return sendSuccess(res, schedules);
 }
+
+export async function getMyHistory(req: Request, res: Response) {
+  const studentId = req.user!.userId;
+
+  const events = await prisma.attendanceEvent.findMany({
+    where: { studentId },
+    orderBy: { timestamp: 'desc' },
+    include: { schedule: { select: { roomName: true, class: { select: { name: true } } } } },
+  });
+
+  return sendSuccess(res, events);
+}
