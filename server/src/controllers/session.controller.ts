@@ -120,3 +120,15 @@ export async function reviewFlaggedCheckIn(req: Request, res: Response) {
 
   return sendSuccess(res, updated);
 }
+
+export async function getMySchedulesAsTeacher(req: Request, res: Response) {
+  const teacherId = req.user!.userId;
+
+  const schedules = await prisma.schedule.findMany({
+    where: { class: { teacherId } },
+    include: { class: { select: { name: true } } },
+    orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+  });
+
+  return sendSuccess(res, schedules);
+}

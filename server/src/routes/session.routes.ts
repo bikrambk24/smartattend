@@ -7,12 +7,14 @@ import {
   endSession,
   getLiveRoster,
   reviewFlaggedCheckIn,
+  getMySchedulesAsTeacher,
 } from '../controllers/session.controller';
 
 const router = Router();
 
 router.use(authenticate);
 
+router.get('/my-schedules', authorise('teacher'), asyncHandler(getMySchedulesAsTeacher));
 router.post('/:scheduleId/start', authorise('teacher'), asyncHandler(startSession));
 router.post('/:scheduleId/end', authorise('teacher'), asyncHandler(endSession));
 router.get('/:scheduleId/roster', authorise('teacher', 'admin'), asyncHandler(getLiveRoster));
