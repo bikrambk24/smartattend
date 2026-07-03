@@ -37,3 +37,31 @@ export async function login(req: Request, res: Response) {
   const token = signToken({ userId: user.id, role: user.role });
   res.json({ success: true, data: { token, role: user.role, name: user.name } });
 }
+
+export async function listUsers(req: Request, res: Response) {
+  const role = req.query.role as string | undefined;
+
+  const users = await prisma.user.findMany({
+    where: role ? { role: role as any } : undefined,
+    select: { id: true, name: true, email: true, role: true, studentId: true, isDisabled: true, createdAt: true },
+    orderBy: { name: 'asc' },
+  });
+
+  res.json({ success: true, data: users });
+}
+
+export async function toggleUserDisabled(req: Request, res: Response) {
+  const id = req.params.id as string;
+
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'User not found' });
+  }
+
+  const updated = await prisma.user.update({
+    where: { id },
+    data: { isDisabled: !user.isDisabled },
+  });
+
+  res.json({ success: true, data: { id: updated.id, isDisabled: updated.isDisabled } });
+}
