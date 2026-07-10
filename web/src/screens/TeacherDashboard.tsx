@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/useAuth';
 import { api } from '../services/api';
+import EmptyState from '../components/EmptyState';
+import Logo from '../components/Logo';
 
 interface ScheduleItem {
   id: string;
@@ -92,18 +94,26 @@ export default function TeacherDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center">
-        <h1 className="text-lg font-semibold text-slate-900">Welcome, {name}</h1>
-        <button onClick={logout} className="text-sm text-blue-600 hover:underline">Log out</button>
+      <header className="bg-ink px-8 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <Logo variant="dark" size={20} />
+          <span className="text-sm text-slate-400">Teacher — {name}</span>
+        </div>
+        <button onClick={logout} className="text-sm text-teal-light hover:underline">Log out</button>
       </header>
 
       <div className="flex">
         <aside className="w-72 bg-white border-r border-slate-200 min-h-[calc(100vh-65px)] p-4">
-          <h2 className="text-xs font-semibold uppercase text-slate-400 mb-3">My Schedules</h2>
+          <h2 className="text-xs font-semibold uppercase text-slate-400 mb-3">My schedules</h2>
           {loading ? (
             <p className="text-sm text-slate-400">Loading…</p>
           ) : schedules.length === 0 ? (
-            <p className="text-sm text-slate-400">No schedules found.</p>
+            <div className="text-center py-8 px-2">
+              <p className="text-sm font-medium text-slate-600 mb-1">No classes assigned yet</p>
+              <p className="text-xs text-slate-400">
+                Ask your admin to assign you as the teacher for a class and add a schedule for it.
+              </p>
+            </div>
           ) : (
             <ul className="space-y-1">
               {schedules.map((s) => (
@@ -111,7 +121,7 @@ export default function TeacherDashboard() {
                   <button
                     onClick={() => selectSchedule(s)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-                      selected?.id === s.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-700'
+                      selected?.id === s.id ? 'bg-teal/10 text-teal-dark' : 'hover:bg-slate-50 text-slate-700'
                     }`}
                   >
                     <div className="font-medium">{s.class.name}</div>
@@ -130,12 +140,22 @@ export default function TeacherDashboard() {
 
         <main className="flex-1 p-8">
           {!selected ? (
-            <p className="text-slate-400">Select a schedule to manage its session.</p>
+            schedules.length === 0 ? (
+              <EmptyState
+                title="Nothing to manage yet"
+                description="Once your admin assigns you a class and schedule, it will appear in the sidebar and you can start sessions from here."
+              />
+            ) : (
+              <EmptyState
+                title="Select a schedule"
+                description="Choose a class from the sidebar to start a session and view its live roster."
+              />
+            )
           ) : (
             <>
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900">{selected.class.name}</h2>
+                  <h2 className="font-display text-xl font-bold text-ink">{selected.class.name}</h2>
                   <p className="text-sm text-slate-500">{selected.roomName}</p>
                 </div>
                 <button
@@ -145,13 +165,20 @@ export default function TeacherDashboard() {
                     selected.sessionOpen ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
                   }`}
                 >
-                  {selected.sessionOpen ? 'End Session' : 'Start Session'}
+                  {selected.sessionOpen ? 'End session' : 'Start session'}
                 </button>
               </div>
 
-              <h3 className="text-sm font-semibold uppercase text-slate-400 mb-3">Live Roster</h3>
+              <h3 className="text-sm font-semibold uppercase text-slate-400 mb-3">Live roster</h3>
               {roster.length === 0 ? (
-                <p className="text-sm text-slate-400">No check-ins yet.</p>
+                <EmptyState
+                  title={selected.sessionOpen ? 'No check-ins yet' : 'Session is closed'}
+                  description={
+                    selected.sessionOpen
+                      ? 'Students will appear here as soon as they check in.'
+                      : 'Start the session above so enrolled students can check in.'
+                  }
+                />
               ) : (
                 <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
                   {roster.map((event) => (
@@ -159,7 +186,7 @@ export default function TeacherDashboard() {
                       <div>
                         <div className="font-medium text-slate-900">{event.student.name}</div>
                         <div className="text-xs text-slate-400">
-                          {event.eventType === 'checkin' ? 'Check In' : 'Check Out'} ·{' '}
+                          {event.eventType === 'checkin' ? 'Check in' : 'Check out'} ·{' '}
                           {new Date(event.timestamp).toLocaleTimeString()}
                         </div>
                         {event.flagReasons.length > 0 && (
@@ -168,11 +195,17 @@ export default function TeacherDashboard() {
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${OUTCOME_STYLE[event.verificationOutcome]}`}>
-                          {event.verificationOutcome}
-                        </span>
+                        {event.eventType === 'checkin' ? (
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${OUTCOME_STYLE[event.verificationOutcome]}`}>
+                            {event.verificationOutcome}
+                          </span>
+                        ) : (
+                          <span className="text-xs px-2 py-1 rounded-full font-medium bg-slate-100 text-slate-500">
+                            Recorded
+                          </span>
+                        )}
 
-                        {event.flagged && !event.teacherReviewed && (
+                        {event.eventType === 'checkin' && event.verificationOutcome !== 'verified' && !event.teacherReviewed && (
                           <div className="flex gap-2">
                             <button
                               onClick={() => review(event.id, 'confirmed')}
@@ -190,7 +223,7 @@ export default function TeacherDashboard() {
                             </button>
                           </div>
                         )}
-                        {event.flagged && event.teacherReviewed && (
+                        {event.eventType === 'checkin' && event.verificationOutcome !== 'verified' && event.teacherReviewed && (
                           <span className="text-xs text-slate-400 capitalize">{event.teacherDecision}</span>
                         )}
                       </div>

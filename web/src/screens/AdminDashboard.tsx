@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/useAuth';
 import { api } from '../services/api';
+import EmptyState from '../components/EmptyState';
+import Logo from '../components/Logo';
 
-type Section = 'classes' | 'schedules' | 'users';
+type Section = 'classes' | 'schedules' | 'users' | 'enrollments';
 
 interface ClassItem {
   id: string;
@@ -21,17 +23,19 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      <aside className="w-56 bg-white border-r border-slate-200 min-h-screen p-4">
-        <h1 className="text-sm font-semibold text-slate-900 mb-1">SmartAttend</h1>
+      <aside className="w-56 bg-ink min-h-screen p-4">
+        <div className="mb-1">
+          <Logo variant="dark" size={20} />
+        </div>
         <p className="text-xs text-slate-400 mb-6">Admin — {name}</p>
 
         <nav className="space-y-1">
-          {(['classes', 'schedules', 'users'] as Section[]).map((s) => (
+          {(['classes', 'schedules', 'users', 'enrollments'] as Section[]).map((s) => (
             <button
               key={s}
               onClick={() => setSection(s)}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm capitalize ${
-                section === s ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-700'
+                section === s ? 'bg-teal text-white' : 'text-slate-300 hover:bg-ink-light'
               }`}
             >
               {s}
@@ -39,13 +43,14 @@ export default function AdminDashboard() {
           ))}
         </nav>
 
-        <button onClick={logout} className="mt-8 text-sm text-blue-600 hover:underline">Log out</button>
+        <button onClick={logout} className="mt-8 text-sm text-teal-light hover:underline">Log out</button>
       </aside>
 
       <main className="flex-1 p-8">
         {section === 'classes' && <ClassesSection token={token} />}
         {section === 'schedules' && <SchedulesSection token={token} />}
         {section === 'users' && <UsersSection token={token} />}
+        {section === 'enrollments' && <EnrollmentsSection token={token} />}
       </main>
     </div>
   );
@@ -111,7 +116,7 @@ function ClassesSection({ token }: { token: string | null }) {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-slate-900 mb-6">Classes</h2>
+      <h2 className="font-display text-xl font-bold text-ink mb-6">Classes</h2>
 
       <form onSubmit={handleCreate} className="bg-white border border-slate-200 rounded-xl p-4 mb-6 flex gap-3 items-end">
         <div className="flex-1">
@@ -139,7 +144,7 @@ function ClassesSection({ token }: { token: string | null }) {
         <button
           type="submit"
           disabled={submitting}
-          className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+          className="bg-teal text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-teal-dark disabled:opacity-50"
         >
           Create
         </button>
@@ -150,7 +155,10 @@ function ClassesSection({ token }: { token: string | null }) {
       {loading ? (
         <p className="text-sm text-slate-400">Loading…</p>
       ) : classes.length === 0 ? (
-        <p className="text-sm text-slate-400">No classes yet.</p>
+        <EmptyState
+          title="No classes yet"
+          description="Create your first class above by giving it a name and assigning a teacher."
+        />
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
           {classes.map((c) => (
@@ -279,9 +287,18 @@ function SchedulesSection({ token }: { token: string | null }) {
     }
   }
 
+  async function handleConfigChange(scheduleId: string, newConfig: string) {
+    const res = await api.patch(`/api/schedules/${scheduleId}`, { verificationConfig: newConfig }, token);
+    if (res.success) {
+      setReloadKey((k) => k + 1);
+    } else {
+      alert(res.error ?? 'Failed to update verification config');
+    }
+  }
+
   return (
     <div>
-      <h2 className="text-xl font-semibold text-slate-900 mb-6">Schedules</h2>
+      <h2 className="font-display text-xl font-bold text-ink mb-6">Schedules</h2>
 
       <div className="mb-6">
         <label className="block text-xs font-medium text-slate-500 mb-1">Class</label>
@@ -296,6 +313,13 @@ function SchedulesSection({ token }: { token: string | null }) {
           ))}
         </select>
       </div>
+
+      {!classId && (
+        <EmptyState
+          title="Select a class to view its schedules"
+          description="Choose a class from the dropdown above, or create one first if none exist yet."
+        />
+      )}
 
       {classId && (
         <>
@@ -337,8 +361,8 @@ function SchedulesSection({ token }: { token: string | null }) {
               <input value={geofenceLng} onChange={(e) => setGeofenceLng(e.target.value)} placeholder="optional" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
             </div>
             <div className="flex items-end">
-              <button type="submit" disabled={submitting} className="w-full bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-                Create Schedule
+              <button type="submit" disabled={submitting} className="w-full bg-teal text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-teal-dark disabled:opacity-50">
+                Create schedule
               </button>
             </div>
           </form>
@@ -348,7 +372,10 @@ function SchedulesSection({ token }: { token: string | null }) {
           {loadingSchedules ? (
             <p className="text-sm text-slate-400">Loading…</p>
           ) : schedules.length === 0 ? (
-            <p className="text-sm text-slate-400">No schedules for this class yet.</p>
+            <EmptyState
+              title="No schedules yet for this class"
+              description="Add a schedule above with a room, day, time, and verification level. Students won't see this class until a schedule exists."
+            />
           ) : (
             <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
               {schedules.map((s) => (
@@ -356,13 +383,22 @@ function SchedulesSection({ token }: { token: string | null }) {
                   <div>
                     <div className="font-medium text-slate-900">{s.roomName}</div>
                     <div className="text-xs text-slate-400">
-                      {DAY_NAMES[s.dayOfWeek]} {s.startTime}–{s.endTime} · {s.verificationConfig} ·{' '}
+                      {DAY_NAMES[s.dayOfWeek]} {s.startTime}–{s.endTime} ·{' '}
                       {s.sessionOpen ? 'Session open' : 'Session closed'}
                     </div>
                   </div>
-                  <button onClick={() => handleDelete(s.id)} className="text-xs text-red-600 hover:underline">
-                    Delete
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={s.verificationConfig}
+                      onChange={(e) => handleConfigChange(s.id, e.target.value)}
+                      className="text-xs border border-slate-300 rounded px-2 py-1"
+                    >
+                      {CONFIG_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <button onClick={() => handleDelete(s.id)} className="text-xs text-red-600 hover:underline">
+                      Delete
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -451,7 +487,7 @@ function UsersSection({ token }: { token: string | null }) {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-slate-900 mb-6">Users</h2>
+      <h2 className="font-display text-xl font-bold text-ink mb-6">Users</h2>
 
       <form onSubmit={handleCreate} className="bg-white border border-slate-200 rounded-xl p-4 mb-6 grid grid-cols-3 gap-3">
         <div>
@@ -480,8 +516,8 @@ function UsersSection({ token }: { token: string | null }) {
           </div>
         )}
         <div className="flex items-end">
-          <button type="submit" disabled={submitting} className="w-full bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-            Create User
+          <button type="submit" disabled={submitting} className="w-full bg-teal text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-teal-dark disabled:opacity-50">
+            Create user
           </button>
         </div>
       </form>
@@ -490,6 +526,8 @@ function UsersSection({ token }: { token: string | null }) {
 
       {loading ? (
         <p className="text-sm text-slate-400">Loading…</p>
+      ) : users.length === 0 ? (
+        <EmptyState title="No users yet" description="Create your first student or teacher account above." />
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
           {users.map((u) => (
@@ -516,6 +554,177 @@ function UsersSection({ token }: { token: string | null }) {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+interface EnrollmentItem {
+  id: string;
+  student: { id: string; name: string; email: string; studentId: string | null };
+}
+
+interface StudentOption {
+  id: string;
+  name: string;
+}
+
+function EnrollmentsSection({ token }: { token: string | null }) {
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [classId, setClassId] = useState('');
+  const [enrollments, setEnrollments] = useState<EnrollmentItem[]>([]);
+  const [students, setStudents] = useState<StudentOption[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [loadingClasses, setLoadingClasses] = useState(true);
+  const [loadingEnrollments, setLoadingEnrollments] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoadingClasses(true);
+      const [classesRes, studentsRes] = await Promise.all([
+        api.get<ClassItem[]>('/api/classes', token),
+        api.get<StudentOption[]>('/api/auth/users?role=student', token),
+      ]);
+      if (!cancelled) {
+        if (classesRes.success && classesRes.data) setClasses(classesRes.data);
+        if (studentsRes.success && studentsRes.data) setStudents(studentsRes.data);
+        setLoadingClasses(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!classId) {
+        if (!cancelled) setEnrollments([]);
+        return;
+      }
+      setLoadingEnrollments(true);
+      const res = await api.get<EnrollmentItem[]>(`/api/enrollments?classId=${classId}`, token);
+      if (!cancelled && res.success && res.data) setEnrollments(res.data);
+      if (!cancelled) setLoadingEnrollments(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [classId, token, reloadKey]);
+
+  async function handleEnroll(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!classId || !selectedStudentId) {
+      setError('Select both a class and a student');
+      return;
+    }
+    setSubmitting(true);
+    const res = await api.post('/api/enrollments', { classId, studentId: selectedStudentId }, token);
+    setSubmitting(false);
+    if (res.success) {
+      setSelectedStudentId('');
+      setReloadKey((k) => k + 1);
+    } else {
+      setError(res.error ?? 'Failed to enroll student');
+    }
+  }
+
+  async function handleUnenroll(id: string) {
+    if (!confirm('Remove this student from the class?')) return;
+    const res = await api.delete(`/api/enrollments/${id}`, token);
+    if (res.success) {
+      setReloadKey((k) => k + 1);
+    } else {
+      alert(res.error ?? 'Failed to remove enrollment');
+    }
+  }
+
+  const enrolledIds = new Set(enrollments.map((e) => e.student.id));
+  const availableStudents = students.filter((s) => !enrolledIds.has(s.id));
+
+  return (
+    <div>
+      <h2 className="font-display text-xl font-bold text-ink mb-6">Enrollments</h2>
+
+      <div className="mb-6">
+        <label className="block text-xs font-medium text-slate-500 mb-1">Class</label>
+        <select
+          value={classId}
+          onChange={(e) => setClassId(e.target.value)}
+          className="w-72 border border-slate-300 rounded-lg px-3 py-2 text-sm"
+        >
+          <option value="">{loadingClasses ? 'Loading…' : 'Select a class…'}</option>
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {!classId && (
+        <EmptyState
+          title="Select a class to manage enrollments"
+          description="Choose a class from the dropdown above, or create one first if none exist yet."
+        />
+      )}
+
+      {classId && (
+        <>
+          <form onSubmit={handleEnroll} className="bg-white border border-slate-200 rounded-xl p-4 mb-6 flex gap-3 items-end">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-slate-500 mb-1">Student</label>
+              <select
+                value={selectedStudentId}
+                onChange={(e) => setSelectedStudentId(e.target.value)}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">Select a student…</option>
+                {availableStudents.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="bg-teal text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-teal-dark disabled:opacity-50"
+            >
+              Enroll
+            </button>
+          </form>
+
+          {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+
+          {loadingEnrollments ? (
+            <p className="text-sm text-slate-400">Loading…</p>
+          ) : enrollments.length === 0 ? (
+            <EmptyState
+              title="No students enrolled yet"
+              description="Enroll a student above so they can see this class and check in from the mobile app."
+            />
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+              {enrollments.map((e) => (
+                <div key={e.id} className="p-4 flex justify-between items-center">
+                  <div>
+                    <div className="font-medium text-slate-900">{e.student.name}</div>
+                    <div className="text-xs text-slate-400">
+                      {e.student.email}{e.student.studentId ? ` · ${e.student.studentId}` : ''}
+                    </div>
+                  </div>
+                  <button onClick={() => handleUnenroll(e.id)} className="text-xs text-red-600 hover:underline">
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -35,6 +35,13 @@ export async function checkIn(req: Request, res: Response) {
   });
   const hasOpenCheckInAlready = lastEvent?.eventType === 'checkin';
 
+  const hasCompletedCycleThisSession =
+    lastEvent?.eventType === 'checkout' && lastEvent.timestamp >= schedule.updatedAt;
+
+  if (hasCompletedCycleThisSession) {
+    return sendError(res, 'You have already checked in and out for this session', 409);
+  }
+
   const deviceOwner = await prisma.user.findFirst({
     where: { deviceId: req.body.deviceId, role: 'student', NOT: { id: studentId } },
   });

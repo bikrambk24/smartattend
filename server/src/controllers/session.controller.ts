@@ -109,8 +109,8 @@ export async function reviewFlaggedCheckIn(req: Request, res: Response) {
   if (event.schedule.class.teacherId !== teacherUserId) {
     return sendError(res, 'You do not teach the class this event belongs to', 403);
   }
-  if (!event.flagged) {
-    return sendError(res, 'This event was not flagged for review', 409);
+  if (event.flagged === false && event.verificationOutcome === 'verified') {
+    return sendError(res, 'This event does not need review', 409);
   }
 
   const updated = await prisma.attendanceEvent.update({

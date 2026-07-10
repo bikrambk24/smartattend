@@ -6,6 +6,7 @@ import classRoutes from './routes/class.routes';
 import scheduleRoutes from './routes/schedule.routes';
 import sessionRoutes from './routes/session.routes';
 import attendanceRoutes from './routes/attendance.routes';
+import enrollmentRoutes from './routes/enrollment.routes';
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/schedules', scheduleRoutes);
+app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/attendance', attendanceRoutes);
 
