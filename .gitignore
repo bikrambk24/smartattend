@@ -16,6 +16,3 @@ app/android/.gradle/
 
 # Source maps
 *.js.map
-
-# Prisma
-server/prisma/migrations/
